@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <errno.h>
 
 int main(void) {
 
@@ -38,24 +39,27 @@ int main(void) {
         char *tok = strtok(input, " \t|><&;");
         while (tok != NULL) {
             tokens[i++] = tok;
-            //printf("\"%s\"\n", tok); // remove
             tok = strtok(NULL, " \t|><&;");
         }
+        tokens[i] = NULL;
 
-        // 
+        // Create fork
         pid_t p = fork();
         if (p < 0) {
+            // Error when forking
             printf("Error forking\n");
         }
         else if (p == 0) {
-            // child process
-            char path[100] = "/bin/";
-
-            strcat(path, tokens[0]);
-
-            execvp(path, tokens);
+            // We're the child process
+            if (execvp(tokens[0], tokens) == -1) {
+                // Exec error
+                char errMsg[] = "Error running command: ";
+                strcat(errMsg, tokens[0]);
+                perror(errMsg);
+            }
         }
         else if (p > 0) {
+            // We're the parent process
             // Wait for child process to finish
             wait(NULL);
         }
