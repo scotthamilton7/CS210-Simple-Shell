@@ -10,6 +10,13 @@ int main(void) {
 
     char input[513];
     int exit = 0;
+
+    // Save original PATH
+    char* originalPath = getenv("PATH");
+
+    // Set current directory to HOME
+    char* userHomeDir = getenv("HOME");
+    chdir(userHomeDir);
     
     while (!exit) {
         printf("$ ");
@@ -64,6 +71,9 @@ int main(void) {
             wait(NULL);
         }
     }
+
+    // Restore original PATH
+    setenv("PATH", originalPath, 1);
 
     return 0;
 }
