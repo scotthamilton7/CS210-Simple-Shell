@@ -6,6 +6,8 @@
 #include <sys/wait.h>
 #include <errno.h>
 
+void getpath(char** tokens);
+void setpath(char** tokens);
 void externalCommand(char** tokens);
 
 int main(void) {
@@ -19,8 +21,6 @@ int main(void) {
     // Set current directory to HOME
     char* userHomeDir = getenv("HOME");
     chdir(userHomeDir);
-
-
     
     while (!exit) {
         printf("$ ");
@@ -54,13 +54,42 @@ int main(void) {
         }
         tokens[i] = NULL;
 
-        externalCommand(tokens);
+        if (strcmp(tokens[0], "getpath") == 0) {
+            getpath(tokens);
+        }
+        else if (strcmp(tokens[0], "setpath") == 0) {
+            setpath(tokens);
+        }
+        else {
+            externalCommand(tokens);
+        }        
     }
 
-    // Restore original PATH
+    // Restore and print original PATH
     setenv("PATH", originalPath, 1);
+    printf("Restored PATH:\n");
+    getpath(NULL);
 
     return 0;
+}
+
+void getpath(char** tokens) {
+    // Check if any parameters were passed in
+    for (int i = 1; i < 50; i++) {
+        if (tokens[i] != NULL) {
+            printf("Error: getpath takes no parameters\n");
+            return;
+        }
+    }
+
+    // Get and print the current value of PATH
+    char* currentPath = getenv("PATH");
+    printf("%s\n", currentPath);
+}
+
+void setpath(char** tokens) {
+    // Set the value of PATH to tokens[1]
+    setenv("PATH", tokens[1], 1);
 }
 
 void externalCommand(char** tokens) {
