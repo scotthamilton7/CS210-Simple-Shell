@@ -46,7 +46,7 @@ int main(void) {
 
         // Split input string into tokens
         int i = 0;
-        char *tokens[50];
+        char *tokens[50] = {NULL};
         char *tok = strtok(input, " \t|><&;");
         while (tok != NULL) {
             tokens[i++] = tok;
@@ -75,11 +75,9 @@ int main(void) {
 
 void getpath(char** tokens) {
     // Check if any parameters were passed in
-    for (int i = 1; i < 50; i++) {
-        if (tokens[i] != NULL) {
-            printf("Error: getpath takes no parameters\n");
-            return;
-        }
+    if (tokens != NULL && tokens[1] != NULL) {
+        printf("Error: getpath takes no parameters\n");
+        return;
     }
 
     // Get and print the current value of PATH
@@ -88,6 +86,12 @@ void getpath(char** tokens) {
 }
 
 void setpath(char** tokens) {
+    // Check if any parameters were passed in
+    if (tokens[2] != NULL || tokens[1] == NULL) {
+        printf("Error: setpath takes exactly 1 parameter\n");
+        return;
+    }
+
     // Set the value of PATH to tokens[1]
     setenv("PATH", tokens[1], 1);
 }
