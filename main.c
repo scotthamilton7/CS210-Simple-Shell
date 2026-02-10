@@ -6,6 +6,8 @@
 #include <sys/wait.h>
 #include <errno.h>
 
+void externalCommand(char** tokens);
+
 int main(void) {
 
     char input[513];
@@ -17,6 +19,8 @@ int main(void) {
     // Set current directory to HOME
     char* userHomeDir = getenv("HOME");
     chdir(userHomeDir);
+
+
     
     while (!exit) {
         printf("$ ");
@@ -50,30 +54,35 @@ int main(void) {
         }
         tokens[i] = NULL;
 
-        // Create fork
-        pid_t p = fork();
-        if (p < 0) {
-            // Error when forking
-            printf("Error forking\n");
-        }
-        else if (p == 0) {
-            // We're the child process
-            if (execvp(tokens[0], tokens) == -1) {
-                // Exec error
-                char errMsg[] = "Error running command: ";
-                strcat(errMsg, tokens[0]);
-                perror(errMsg);
-            }
-        }
-        else if (p > 0) {
-            // We're the parent process
-            // Wait for child process to finish
-            wait(NULL);
-        }
+        externalCommand(tokens);
     }
 
     // Restore original PATH
     setenv("PATH", originalPath, 1);
 
     return 0;
+}
+
+void externalCommand(char** tokens) {
+    // Create fork
+    pid_t p = fork();
+    if (p < 0) {
+        // Error when forking
+        printf("Error forking\n");
+    }
+    else if (p == 0) {
+        // We're the child process
+        if (execvp(tokens[0], tokens) == -1) {
+            // Exec error
+            char errMsg[200] = "Error running command: ";
+            strcat(errMsg, tokens[0]);
+            perror(errMsg);
+            exit(1);
+        }
+    }
+    else if (p > 0) {
+        // We're the parent process
+        // Wait for child process to finish
+        wait(NULL);
+    }
 }
