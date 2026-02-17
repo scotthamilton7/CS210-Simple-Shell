@@ -8,7 +8,6 @@
 
 void getpath(char** tokens);
 void setpath(char** tokens);
-void changeDirectory(char** tokens);
 void externalCommand(char** tokens);
 
 int main(void) {
@@ -61,9 +60,6 @@ int main(void) {
         else if (strcmp(tokens[0], "setpath") == 0) {
             setpath(tokens);
         }
-        else if (strcmp(tokens[0], "cd") == 0){
-            changeDirectory(tokens);
-        }
         else {
             externalCommand(tokens);
         }        
@@ -100,13 +96,6 @@ void setpath(char** tokens) {
     setenv("PATH", tokens[1], 1);
 }
 
-void changeDirectory(char** tokens){
-    if(tokens[1] != NULL){
-        //To be completed
-    }
-    else{chdir(getenv("HOME"));}
-};
-
 void externalCommand(char** tokens) {
     // Create fork
     pid_t p = fork();
@@ -129,5 +118,4 @@ void externalCommand(char** tokens) {
         // Wait for child process to finish
         wait(NULL);
     }
-
 }
