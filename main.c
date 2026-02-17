@@ -8,6 +8,7 @@
 
 void getpath(char** tokens);
 void setpath(char** tokens);
+void changeDirectory(char** tokens);
 void externalCommand(char** tokens);
 
 int main(void) {
@@ -60,6 +61,9 @@ int main(void) {
         else if (strcmp(tokens[0], "setpath") == 0) {
             setpath(tokens);
         }
+        else if (strcmp(tokens[0], "cd") == 0){
+            changeDirectory(tokens);
+        }
         else {
             externalCommand(tokens);
         }        
@@ -76,7 +80,7 @@ int main(void) {
 void getpath(char** tokens) {
     // Check if any parameters were passed in
     if (tokens != NULL && tokens[1] != NULL) {
-        printf("Error: getpath takes no parameters\n");
+        printf("Error: Too many arugments. getpath takes no parameters\n");
         return;
     }
 
@@ -87,13 +91,37 @@ void getpath(char** tokens) {
 
 void setpath(char** tokens) {
     // Check if any parameters were passed in
-    if (tokens[2] != NULL || tokens[1] == NULL) {
-        printf("Error: setpath takes exactly 1 parameter\n");
+    if (tokens[2] != NULL) {
+        printf("Error: Too many arguments. setpath takes exactly 1 parameter\n");
+        return;
+    }
+    else if (tokens[1] == NULL) {
+        printf("Error: Not enough arguments. setpath requires 1 paramater (the path)\n");
         return;
     }
 
     // Set the value of PATH to tokens[1]
     setenv("PATH", tokens[1], 1);
+}
+
+void changeDirectory(char** tokens){
+    // Check if too many paramaters have been passed
+    if (tokens[2] != NULL) {
+        printf("Error: Too many arguments. cd takes either 0 or 1 paramaters\n");
+        return;
+    }
+
+    if(tokens[1] != NULL){
+        if (chdir(tokens[1]) != 0) {
+            // Error changing directories
+            char errMsg[200] = "Directory change failed: ";
+            strcat(errMsg, tokens[1]);
+            perror(errMsg);
+        }
+    }
+    else{
+        chdir(getenv("HOME"));
+    }
 }
 
 void externalCommand(char** tokens) {
@@ -118,4 +146,5 @@ void externalCommand(char** tokens) {
         // Wait for child process to finish
         wait(NULL);
     }
+
 }
