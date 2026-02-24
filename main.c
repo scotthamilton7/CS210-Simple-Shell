@@ -13,6 +13,8 @@ void changeDirectory(char** tokens);
 void externalCommand(char** tokens);
 void printHistory(char** history, int count);
 void invokeHistory(char** tokens, char** history, int count);
+void saveHistory(char** history, int count);
+void loadHistory(char** history, int* count);
 
 int main(void) {
 
@@ -27,6 +29,9 @@ int main(void) {
     // Set current directory to HOME
     char* userHomeDir = getenv("HOME");
     chdir(userHomeDir);
+
+    // Load history from file
+    loadHistory(history, &count);
     
     while (!exit) {
         printf("$ ");
@@ -40,23 +45,40 @@ int main(void) {
         
         // Clear any unread characters from stdin
         setbuf(stdin, NULL);
+
+        // 
+        if (strcmp(input, "\n") == 0) {
+            continue;
+        }
         
         // Remove newline from input
         input[strcspn(input, "\n")] = 0;
-        
+
+        // Add command to history
+        if (strcspn(input, "!") != 0) {
+            if (history[count] != NULL) {
+                free(history[count]);
+            }
+            history[count] = strdup(input);
+            count = (count + 1) % 20;
+        }
+
         // Check if input is "exit", if it is then quit the shell
         if (strcmp(input, "exit") == 0) {
             exit = 1;
             break;
         }
 
-        // Add command to history
-        if (strcspn(input, "!") != 0) {
-            history[count] = strdup(input);
-            count = (count + 1) % 20;
-        }
-
         processInput(input, history, count);
+    }
+
+    saveHistory(history, count);
+
+    // Clear history memeory allocations
+    for (int i = 0; i < 20; i++) {
+        if (history[i] != NULL) {
+            free(history[i]);
+        }
     }
 
     // Restore and print original PATH
@@ -228,4 +250,68 @@ void invokeHistory(char** tokens, char** history, int count) {
     char* cmd = strdup(history[index]);
     processInput(cmd, history, count);
     free(cmd);
+}
+
+void saveHistory(char** history, int count) {
+    // Get file path for history file
+    char file[512];
+    strcat(strcpy(file, getenv("HOME")), "/.hist_list");
+
+    // Open file to save history to
+    FILE *fp = fopen(file, "w");
+
+    // Check if file opened correctly
+    if (!fp) {
+        printf("Failed to save history!\n"); 
+        return;
+    }
+
+    // Save history array to file
+    for (int i = 0; i < 20; i++) {
+        int index = (count + i) % 20;
+        if (history[index] != NULL) {
+            fprintf(fp, "%s", history[index]);
+            int tmp = (index + 1) % 20;
+            if (history[tmp] != NULL) {
+                fprintf(fp, "\n");
+            }
+        }
+    }
+
+    // Close file
+    fclose(fp);
+}
+
+void loadHistory(char** history, int* count) {
+    // Get file path for history file
+    char file[512];
+    strcat(strcpy(file, getenv("HOME")), "/.hist_list");
+
+    // Open file to load history from
+    FILE *fp = fopen(file, "r");
+
+    // Check if file opened correctly
+    if (!fp) {
+        printf("Could not find persistant history\n"); 
+        return;
+    }
+
+    // 
+    char buffer[512];
+
+    // Load history from file
+    while (fgets(buffer, 512, fp)) {
+        buffer[strcspn(buffer, "\n")] = 0;
+
+        int len = strlen(buffer);
+        char* val = malloc((sizeof(char) * len) + 1);
+        strcpy(val, buffer);
+
+        history[*count] = val;
+
+        *count = (*count + 1) % 20;
+    }
+
+    // Close file
+    fclose(fp);
 }
