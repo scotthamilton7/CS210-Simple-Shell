@@ -15,6 +15,7 @@ void printHistory(char** history, int count);
 void invokeHistory(char** tokens, char** history, int count);
 void saveHistory(char** history, int count);
 void loadHistory(char** history, int* count);
+void trim(char *s);
 
 int main(void) {
 
@@ -46,8 +47,11 @@ int main(void) {
         // Clear any unread characters from stdin
         setbuf(stdin, NULL);
 
+        // Remove leading whitespace
+        trim(input);
+
         // 
-        if (strcmp(input, "\n") == 0) {
+        if (strcmp(input, "\n") == 0 || strcmp(input, " \n") == 0) {
             continue;
         }
         
@@ -87,6 +91,18 @@ int main(void) {
     getpath(NULL);
 
     return 0;
+}
+
+void trim(char *s) {
+  
+    // Pointer to the beginning of the trimmed string
+    char *ptr = s;
+
+    // Skip leading spaces
+    while (*s == ' ') s++;
+
+    // Shift remaining characters to the beginning
+    while ((*ptr++ = *s++));
 }
 
 void processInput(char* input, char** history, int count) {
