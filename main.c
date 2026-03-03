@@ -83,14 +83,6 @@ int main(void) {
             break;
         }
 
-        // Check alias
-        for (int i = 0; i < 10; i++) {
-            if (aliases[i] != NULL && strcmp(input, aliases[i]->name)) {
-                strcpy(input, aliases[i]->command);
-                break;
-            }
-        }
-
         processInput(input, count);
     }
 
@@ -124,6 +116,14 @@ void trim(char *s) {
 }
 
 void processInput(char* input, int count) {
+    // Check alias
+    for (int i = 0; i < 10; i++) {
+        if (aliases[i] != NULL && strcmp(input, aliases[i]->name) == 0) {
+            strcpy(input, aliases[i]->command);
+            break;
+        }
+    }
+
     // Split input string into tokens
     int i = 0;
     char* tokens[50] = {NULL};
@@ -365,23 +365,34 @@ void loadHistory( int* count) {
 }
 
 void addAlias(char** tokens) {
+    if (tokens[2] == NULL) {
+        printf("Error: correct usage is\nalias <name> <command>\n");
+        return;
+    }
+
     for (int i = 0; i < 10; i++) {
-        if (aliases[i] != NULL && strcmp(aliases[i]->name, tokens[1])) {
+        if (aliases[i] != NULL && strcmp(aliases[i]->name, tokens[1]) == 0) {
             // Alias already exists
+            printf("Overwriting alias %s\n", aliases[i]->name);
             char cmd[512] = "";
             for (int j = 2; j < 20; j++) {
-                strcat(cmd, tokens[j]);
+                if (tokens[j] != NULL) {
+                    strcat(cmd, tokens[j]);
+                    strcat(cmd, " ");
+                }
             }
             strcpy(aliases[i]->command, cmd);
             return;
         }
 
         if (aliases[i] == NULL) {
+
             // Create alias
             char cmd[512] = "";
             for (int j = 2; j < 20; j++) {
                 if (tokens[j] != NULL) {
                     strcat(cmd, tokens[j]);
+                    strcat(cmd, " ");
                 }
                 else {
                     break;
@@ -389,7 +400,7 @@ void addAlias(char** tokens) {
             }
 
             aliases[i] = malloc(sizeof(alias));
-            aliases[i]->name = malloc(sizeof(strlen(tokens[1])));
+            aliases[i]->name = malloc(strlen(tokens[1]) + 1);
             aliases[i]->command = malloc(sizeof(char) * 512);
 
             strcpy(aliases[i]->name, tokens[1]);
@@ -412,14 +423,29 @@ void deleteAlias(char** tokens) {
         return;
     }
 
+    int count = 0;
+
     for (int i = 0; i < 10; i++) {
-        if (aliases[i] != NULL && strcmp(aliases[i]->name, tokens[1])) {
+        if (aliases[i] != NULL) {
+            count++;
+        }
+        if (aliases[i] != NULL && strcmp(aliases[i]->name, tokens[1]) == 0) {
             // Alias found, delete it
             free(aliases[i]->name);
             free(aliases[i]->command);
             free(aliases[i]);
+            aliases[i] = NULL;
+            return;
         }
     }
+
+    if (count == 0) {
+        printf("Error deleting alias: no aliases exist\n");
+    }
+    else {
+        printf("Error deleting alias: alias doesn't exist\n");
+    }
+
 }
 
 void printAliases() {
