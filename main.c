@@ -6,21 +6,31 @@
 #include <sys/wait.h>
 #include <errno.h>
 
-void processInput(char* input, char** history, int count);
+void processInput(char* input, int count);
 void getpath(char** tokens);
 void setpath(char** tokens);
 void changeDirectory(char** tokens);
 void externalCommand(char** tokens);
-void printHistory(char** history, int count);
-void invokeHistory(char** tokens, char** history, int count);
-void saveHistory(char** history, int count);
-void loadHistory(char** history, int* count);
+void printHistory(int count);
+void invokeHistory(char** tokens, int count);
+void saveHistory(int count);
+void loadHistory(int* count);
 void trim(char *s);
+void addAlias(char** tokens);
+void deleteAlias(char** tokens);
+void printAliases();
+
+typedef struct {
+    char* name;
+    char* command;
+} alias;
+
+alias* aliases[10] = {NULL};
+char* history[20] = {NULL};
 
 int main(void) {
 
     char input[513];
-    char* history[20] = {NULL};
     int exit = 0;
     int count = 0;
 
@@ -32,7 +42,7 @@ int main(void) {
     chdir(userHomeDir);
 
     // Load history from file
-    loadHistory(history, &count);
+    loadHistory(&count);
     
     while (!exit) {
         printf("$ ");
@@ -73,10 +83,10 @@ int main(void) {
             break;
         }
 
-        processInput(input, history, count);
+        processInput(input, count);
     }
 
-    saveHistory(history, count);
+    saveHistory(count);
 
     // Clear history memeory allocations
     for (int i = 0; i < 20; i++) {
@@ -105,7 +115,15 @@ void trim(char *s) {
     while ((*ptr++ = *s++));
 }
 
-void processInput(char* input, char** history, int count) {
+void processInput(char* input, int count) {
+    // Check alias
+    for (int i = 0; i < 10; i++) {
+        if (aliases[i] != NULL && strcmp(input, aliases[i]->name) == 0) {
+            strcpy(input, aliases[i]->command);
+            break;
+        }
+    }
+
     // Split input string into tokens
     int i = 0;
     char* tokens[50] = {NULL};
@@ -115,6 +133,9 @@ void processInput(char* input, char** history, int count) {
         tok = strtok(NULL, " \t|><&;");
     }
     tokens[i] = NULL;
+
+    // Check alias
+
 
     // 
     if (strcmp(tokens[0], "getpath") == 0) {
@@ -127,10 +148,21 @@ void processInput(char* input, char** history, int count) {
         changeDirectory(tokens);
     }
     else if (strcmp(tokens[0], "history") == 0) {
-        printHistory(history, count);
+        printHistory(count);
     }
     else if (strcspn(input, "!") == 0) {
-        invokeHistory(tokens, history, count);
+        invokeHistory(tokens, count);
+    }
+    else if (strcmp(tokens[0], "alias") == 0) {
+        if (tokens[1] != NULL) {
+            addAlias(tokens);
+        }
+        else {
+            printAliases();
+        }
+    }
+    else if (strcmp(tokens[0], "unalias") == 0) {
+        deleteAlias(tokens);
     }
     else {
         externalCommand(tokens);
@@ -209,7 +241,7 @@ void externalCommand(char** tokens) {
 
 }
 
-void printHistory(char** history, int count) {
+void printHistory(int count) {
     // Print all items in the history array
     int num = 1;
     for (int i = 0; i < 20; i++) {
@@ -220,7 +252,7 @@ void printHistory(char** history, int count) {
     }
 }
 
-void invokeHistory(char** tokens, char** history, int count) {
+void invokeHistory(char** tokens, int count) {
     int historyCount = 0;
     int index = -1;
 
@@ -264,11 +296,11 @@ void invokeHistory(char** tokens, char** history, int count) {
 
     // Duplicate command and run it
     char* cmd = strdup(history[index]);
-    processInput(cmd, history, count);
+    processInput(cmd, count);
     free(cmd);
 }
 
-void saveHistory(char** history, int count) {
+void saveHistory(int count) {
     // Get file path for history file
     char file[512];
     strcat(strcpy(file, getenv("HOME")), "/.hist_list");
@@ -298,7 +330,7 @@ void saveHistory(char** history, int count) {
     fclose(fp);
 }
 
-void loadHistory(char** history, int* count) {
+void loadHistory( int* count) {
     // Get file path for history file
     char file[512];
     strcat(strcpy(file, getenv("HOME")), "/.hist_list");
@@ -330,4 +362,102 @@ void loadHistory(char** history, int* count) {
 
     // Close file
     fclose(fp);
+}
+
+void addAlias(char** tokens) {
+    if (tokens[2] == NULL) {
+        printf("Error: correct usage is\nalias <name> <command>\n");
+        return;
+    }
+
+    for (int i = 0; i < 10; i++) {
+        if (aliases[i] != NULL && strcmp(aliases[i]->name, tokens[1]) == 0) {
+            // Alias already exists
+            printf("Overwriting alias %s\n", aliases[i]->name);
+            char cmd[512] = "";
+            for (int j = 2; j < 20; j++) {
+                if (tokens[j] != NULL) {
+                    strcat(cmd, tokens[j]);
+                    strcat(cmd, " ");
+                }
+            }
+            strcpy(aliases[i]->command, cmd);
+            return;
+        }
+
+        if (aliases[i] == NULL) {
+
+            // Create alias
+            char cmd[512] = "";
+            for (int j = 2; j < 20; j++) {
+                if (tokens[j] != NULL) {
+                    strcat(cmd, tokens[j]);
+                    strcat(cmd, " ");
+                }
+                else {
+                    break;
+                }
+            }
+
+            aliases[i] = malloc(sizeof(alias));
+            aliases[i]->name = malloc(strlen(tokens[1]) + 1);
+            aliases[i]->command = malloc(sizeof(char) * 512);
+
+            strcpy(aliases[i]->name, tokens[1]);
+            strcpy(aliases[i]->command, cmd);
+
+            return;
+        }
+
+        if (i == 9) {
+            // Alias array full
+            printf("Cannot create alias. You already have the maximum (10)\n");
+            return;
+        }
+    }
+}
+
+void deleteAlias(char** tokens) {
+    if (tokens[2] != NULL) {
+        printf("Error: unalias takes only one parameter (the alias you want to remove)\n");
+        return;
+    }
+
+    int count = 0;
+
+    for (int i = 0; i < 10; i++) {
+        if (aliases[i] != NULL) {
+            count++;
+        }
+        if (aliases[i] != NULL && strcmp(aliases[i]->name, tokens[1]) == 0) {
+            // Alias found, delete it
+            free(aliases[i]->name);
+            free(aliases[i]->command);
+            free(aliases[i]);
+            aliases[i] = NULL;
+            return;
+        }
+    }
+
+    if (count == 0) {
+        printf("Error deleting alias: no aliases exist\n");
+    }
+    else {
+        printf("Error deleting alias: alias doesn't exist\n");
+    }
+
+}
+
+void printAliases() {
+    int count = 0;
+    for (int i = 0; i < 10; i++) {
+        if (aliases[i] != NULL) {
+            printf("%s = %s\n", aliases[i]->name, aliases[i]->command);
+            count++;
+        }
+    }
+
+    if (count == 0) {
+        printf("No aliases saved\n");
+    }
 }
