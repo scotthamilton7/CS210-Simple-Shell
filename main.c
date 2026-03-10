@@ -16,6 +16,7 @@ void invokeHistory(char** tokens, int count);
 void saveHistory(int count);
 void loadHistory(int* count);
 void trim(char *s);
+void checkAlias(char* input);
 void addAlias(char** tokens);
 void deleteAlias(char** tokens);
 void printAliases();
@@ -121,14 +122,30 @@ void trim(char *s) {
     while ((*ptr++ = *s++));
 }
 
-void processInput(char* input, int count) {
+void checkAlias(char* input) {
     // Check alias
     for (int i = 0; i < 10; i++) {
-        if (aliases[i] != NULL && strcmp(input, aliases[i]->name) == 0) {
-            strcpy(input, aliases[i]->command);
-            break;
+        if (aliases[i] != NULL) {
+            int aliasLen = strlen(aliases[i]->name);
+
+            // Check if input starts with alias name
+            if (strncmp(input, aliases[i]->name, aliasLen) == 0) {
+
+                // Check alias name is full token and not just start of one
+                if (input[aliasLen] == ' ' || input[aliasLen] == '\0') {
+                    char newInput[513];
+                    snprintf(newInput, sizeof(newInput), "%s%s", aliases[i]->command, input + aliasLen);
+                    strcpy(input, newInput);
+                    break;
+                }
+            }
         }
     }
+}
+
+void processInput(char* input, int count) {
+    // Check if input is alias
+    checkAlias(input);
 
     // Split input string into tokens
     int i = 0;
@@ -140,8 +157,8 @@ void processInput(char* input, int count) {
     }
     tokens[i] = NULL;
 
-    // Check alias
-
+    //
+    checkAlias(tokens[0]);
 
     //
     if (strcmp(tokens[0], "getpath") == 0) {
