@@ -145,7 +145,12 @@ void checkAlias(char* input) {
 
 void processInput(char* input, int count) {
     // Check if input is alias
-    checkAlias(input);
+    //checkAlias(input);
+    char prev[513];
+    do {
+        strcpy(prev, input);
+        checkAlias(input);
+    } while (strcmp(prev, input) != 0);
 
     // Split input string into tokens
     int i = 0;
@@ -156,9 +161,6 @@ void processInput(char* input, int count) {
         tok = strtok(NULL, " \t|><&;");
     }
     tokens[i] = NULL;
-
-    //
-    checkAlias(tokens[0]);
 
     //
     if (strcmp(tokens[0], "getpath") == 0) {
@@ -211,7 +213,7 @@ void setpath(char** tokens) {
         return;
     }
     else if (tokens[1] == NULL) {
-        printf("Error: Not enough arguments. setpath requires 1 paramater (the path)\n");
+        printf("Error: Not enough arguments. setpath requires 1 parameter (the path)\n");
         return;
     }
 
@@ -220,9 +222,9 @@ void setpath(char** tokens) {
 }
 
 void changeDirectory(char** tokens){
-    // Check if too many paramaters have been passed
+    // Check if too many parameters have been passed
     if (tokens[2] != NULL) {
-        printf("Error: Too many arguments. cd takes either 0 or 1 paramaters\n");
+        printf("Error: Too many arguments. cd takes either 0 or 1 parameters\n");
         return;
     }
 
