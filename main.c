@@ -19,6 +19,8 @@ void trim(char *s);
 void addAlias(char** tokens);
 void deleteAlias(char** tokens);
 void printAliases();
+void saveAliases();
+void loadAliases();
 
 typedef struct {
     char* name;
@@ -43,28 +45,31 @@ int main(void) {
 
     // Load history from file
     loadHistory(&count);
-    
+
+    // Load aliases
+    loadAliases();
+
     while (!exit) {
         printf("$ ");
-        
+
         // If fgets returns NULL, Ctrl-D has been pressed
         if (fgets(input, 513, stdin) == NULL) {
             printf("\n");
             exit = 1;
             break;
         }
-        
+
         // Clear any unread characters from stdin
         setbuf(stdin, NULL);
 
         // Remove leading whitespace
         trim(input);
 
-        // 
+        //
         if (strcmp(input, "\n") == 0 || strcmp(input, " \n") == 0) {
             continue;
         }
-        
+
         // Remove newline from input
         input[strcspn(input, "\n")] = 0;
 
@@ -87,6 +92,7 @@ int main(void) {
     }
 
     saveHistory(count);
+    saveAliases();
 
     // Clear history memeory allocations
     for (int i = 0; i < 20; i++) {
@@ -104,7 +110,7 @@ int main(void) {
 }
 
 void trim(char *s) {
-  
+
     // Pointer to the beginning of the trimmed string
     char *ptr = s;
 
@@ -137,7 +143,7 @@ void processInput(char* input, int count) {
     // Check alias
 
 
-    // 
+    //
     if (strcmp(tokens[0], "getpath") == 0) {
         getpath(tokens);
     }
@@ -310,7 +316,7 @@ void saveHistory(int count) {
 
     // Check if file opened correctly
     if (!fp) {
-        printf("Failed to save history!\n"); 
+        printf("Failed to save history!\n");
         return;
     }
 
@@ -340,11 +346,11 @@ void loadHistory( int* count) {
 
     // Check if file opened correctly
     if (!fp) {
-        printf("Could not find persistant history\n"); 
+        printf("Could not find persistant history\n");
         return;
     }
 
-    // 
+    //
     char buffer[512];
 
     // Load history from file
@@ -460,4 +466,63 @@ void printAliases() {
     if (count == 0) {
         printf("No aliases saved\n");
     }
+}
+
+void saveAliases() {
+    char file[512];
+    strcat(strcpy(file, getenv("HOME")), "/.aliases");
+
+    FILE *fp = fopen(file, "w");
+
+    // Check if file opened correctly
+    if (!fp) {
+        printf("Failed to save aliases!\n");
+        return;
+    }
+    for (int i = 0; i < 10; i++) {
+        if (aliases[i] != NULL) {
+            fprintf(fp, "%s ", aliases[i]->name);
+            fprintf(fp, "%s\n", aliases[i]->command);
+
+        }
+        else{break;}
+    }
+
+    fclose(fp);
+}
+
+void loadAliases() {
+    char file[512];
+    strcat(strcpy(file, getenv("HOME")), "/.aliases");
+
+    FILE *fp = fopen(file, "r");
+    if (!fp) {
+        printf("Could not find persistent aliases\n");
+        return;
+    }
+
+    char buffer[512];
+
+    while (fgets(buffer, sizeof(buffer), fp)) {
+        buffer[strcspn(buffer, "\n")] = 0;
+
+        // Split <name><space><command>
+        char *space = strchr(buffer, ' ');
+        if (!space) continue;
+
+        *space = '\0';
+        char *name = buffer;
+        char *cmd  = space + 1;
+
+        char *tokens[20] = {NULL};
+        tokens[0] = "alias";
+        tokens[1] = name;
+        tokens[2] = cmd;
+
+
+
+        addAlias(tokens);
+    }
+
+    fclose(fp);
 }
