@@ -6,6 +6,8 @@
 #include <sys/wait.h>
 #include <errno.h>
 
+#include "list.h"
+
 void processInput(char* input, int count);
 void getpath(char** tokens);
 void setpath(char** tokens);
@@ -16,7 +18,7 @@ void invokeHistory(char** tokens, int count);
 void saveHistory(int count);
 void loadHistory(int* count);
 void trim(char *s);
-void checkAlias(char* input);
+int checkAlias(char* input, List aliases_used);
 void addAlias(char** tokens);
 void deleteAlias(char** tokens);
 void printAliases();
@@ -74,15 +76,6 @@ int main(void) {
         // Remove newline from input
         input[strcspn(input, "\n")] = 0;
 
-        // Add command to history
-        if (strcspn(input, "!") != 0) {
-            if (history[count] != NULL) {
-                free(history[count]);
-            }
-            history[count] = strdup(input);
-            count = (count + 1) % 20;
-        }
-
         // Check if input is "exit", if it is then quit the shell
         if (strcmp(input, "exit") == 0) {
             exit = 1;
@@ -90,6 +83,7 @@ int main(void) {
         }
 
         processInput(input, count);
+
     }
 
     saveHistory(count);
@@ -122,7 +116,7 @@ void trim(char *s) {
     while ((*ptr++ = *s++));
 }
 
-void checkAlias(char* input) {
+int checkAlias(char* input, List aliases_used) {
     // Check alias
     for (int i = 0; i < 10; i++) {
         if (aliases[i] != NULL) {
@@ -133,6 +127,16 @@ void checkAlias(char* input) {
 
                 // Check alias name is full token and not just start of one
                 if (input[aliasLen] == ' ' || input[aliasLen] == '\0') {
+
+                    // Check for circular alias
+                    if (contains(aliases_used, aliases[i]->name) == 1) {
+                        printf("Circular alias detected with alias \"%s\": aborted\n", aliases[i]->name);
+                        return 1; // Error
+                    }
+
+                    // Add current alias to aliases_used list
+                    push(aliases_used, aliases[i]->name);
+
                     char newInput[513];
                     snprintf(newInput, sizeof(newInput), "%s%s", aliases[i]->command, input + aliasLen);
                     strcpy(input, newInput);
@@ -141,15 +145,22 @@ void checkAlias(char* input) {
             }
         }
     }
+
+    return 0;
 }
 
 void processInput(char* input, int count) {
+    // Create alias list
+    List aliases_used = new_list();
+
     // Check if input is alias
     //checkAlias(input);
     char prev[513];
     do {
         strcpy(prev, input);
-        checkAlias(input);
+        if (checkAlias(input, aliases_used) == 1) {
+            return;
+        }
     } while (strcmp(prev, input) != 0);
 
     // Split input string into tokens
@@ -162,36 +173,48 @@ void processInput(char* input, int count) {
     }
     tokens[i] = NULL;
 
-    //
-    if (strcmp(tokens[0], "getpath") == 0) {
-        getpath(tokens);
-    }
-    else if (strcmp(tokens[0], "setpath") == 0) {
-        setpath(tokens);
-    }
-    else if (strcmp(tokens[0], "cd") == 0){
-        changeDirectory(tokens);
-    }
-    else if (strcmp(tokens[0], "history") == 0) {
-        printHistory(count);
-    }
-    else if (strcspn(input, "!") == 0) {
+    if (strcspn(input, "!") == 0) {
         invokeHistory(tokens, count);
     }
-    else if (strcmp(tokens[0], "alias") == 0) {
-        if (tokens[1] != NULL) {
-            addAlias(tokens);
+    else {
+        // Add command to history
+        if (history[count] != NULL) {
+            free(history[count]);
+        }
+        history[count] = strdup(input);
+        count = (count + 1) % 20;
+
+        //
+        if (strcmp(tokens[0], "getpath") == 0) {
+            getpath(tokens);
+        }
+        else if (strcmp(tokens[0], "setpath") == 0) {
+            setpath(tokens);
+        }
+        else if (strcmp(tokens[0], "cd") == 0){
+            changeDirectory(tokens);
+        }
+        else if (strcmp(tokens[0], "history") == 0) {
+            printHistory(count);
+        }
+        else if (strcmp(tokens[0], "alias") == 0) {
+            if (tokens[1] != NULL) {
+                addAlias(tokens);
+            }
+            else {
+                printAliases();
+            }
+        }
+        else if (strcmp(tokens[0], "unalias") == 0) {
+            deleteAlias(tokens);
         }
         else {
-            printAliases();
+            externalCommand(tokens);
         }
     }
-    else if (strcmp(tokens[0], "unalias") == 0) {
-        deleteAlias(tokens);
-    }
-    else {
-        externalCommand(tokens);
-    }
+
+    clear(aliases_used);
+    free(aliases_used);
 }
 
 void getpath(char** tokens) {
