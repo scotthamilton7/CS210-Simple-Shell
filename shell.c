@@ -2,95 +2,72 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <errno.h>
 
-#include "list.h"
+#include "shell.h"
 
-#define MAX_INPUT 513
-#define MAX_ALIASES 10
-#define MAX_HISTORY 20
-
-void processInput(char* input, int* count);
-void getpath(char** tokens);
-void setpath(char** tokens);
-void changeDirectory(char** tokens);
-void externalCommand(char** tokens);
-void printHistory(int count);
-void invokeHistory(char** tokens, int* count);
-void saveHistory(int count);
-void loadHistory(int* count);
-void trim(char *s);
-int checkAlias(char* input, List aliases_used);
-void addAlias(char** tokens);
-void deleteAlias(char** tokens);
-void printAliases();
-void saveAliases();
-void loadAliases();
-
-typedef struct {
-    char* name;
-    char* command;
-} alias;
-
+// Create global variables
 alias* aliases[MAX_ALIASES] = {NULL};
-char* history[MAX_HISTORY] = {NULL};
+char*  history[MAX_HISTORY] = {NULL};
 
 int main(void) {
-
+    // Create local program variables
     char input[MAX_INPUT];
     int exit = 0;
-    int count = 0;
+    int historyCount = 0;
+    char* originalPath = "";
 
+    // Run start up tasks to initialise shell
+    startTasks(&originalPath, &historyCount);
+
+    while (!exit) {
+        // Print input prompt
+        printf("$ ");
+
+        // Validate user input
+        int validation = inputValidation(input);
+
+        // Check if program loop needs to continue
+        if (validation == 1) {
+            continue;
+        }
+        // Check if program loop needs to exit
+        else if (validation == 2) {
+            printf("\n");
+            exit = 1;
+            break;
+        }
+
+        // Process validated input
+        processInput(input, &historyCount);
+    }
+
+    // Run exit tasks to free memory etc
+    exitTasks(originalPath, historyCount);
+
+    return 0;
+}
+
+void startTasks(char** originalPath, int* historyCount) {
     // Save original PATH
-    char* originalPath = getenv("PATH");
+    *originalPath = getenv("PATH");
 
     // Set current directory to HOME
     char* userHomeDir = getenv("HOME");
     chdir(userHomeDir);
 
     // Load history from file
-    loadHistory(&count);
+    loadHistory(historyCount);
 
     // Load aliases
     loadAliases();
+}
 
-    while (!exit) {
-        printf("$ ");
-
-        // If fgets returns NULL, Ctrl-D has been pressed
-        if (fgets(input, MAX_INPUT - 1, stdin) == NULL) {
-            printf("\n");
-            exit = 1;
-            break;
-        }
-
-        // Clear any unread characters from stdin
-        setbuf(stdin, NULL);
-
-        // Remove leading whitespace
-        trim(input);
-
-        //
-        if (strcmp(input, "\n") == 0 || strcmp(input, " \n") == 0) {
-            continue;
-        }
-
-        // Remove newline from input
-        input[strcspn(input, "\n")] = 0;
-
-        // Check if input is "exit", if it is then quit the shell
-        if (strcmp(input, "exit") == 0) {
-            exit = 1;
-            break;
-        }
-
-        processInput(input, &count);
-
-    }
-
-    saveHistory(count);
+void exitTasks(char* originalPath, int historyCount) {
+    // Save history and aliases to persistant file
+    saveHistory(historyCount);
     saveAliases();
 
     // Clear history memeory allocations
@@ -100,59 +77,108 @@ int main(void) {
         }
     }
 
+    // Cleae alias memory allocations
+    for (int i = 0; i < MAX_ALIASES; i++) {
+        if (aliases[i] != NULL) {
+            free(aliases[i]->name);
+            free(aliases[i]->command);
+            free(aliases[i]);
+        }
+    }
+
     // Restore and print original PATH
     setenv("PATH", originalPath, 1);
     printf("Restored PATH:\n");
     getpath(NULL);
+}
 
+int inputValidation(char* input) {
+    // Return 0 if input is valid and processing can continue
+    // Return 1 to do nothing and continue loop
+    // Return 2 if user wants to exit shell
+
+    // Check if CTRL-D was pressed
+    if (fgets(input, MAX_INPUT - 1, stdin) == NULL) {
+        return 2;
+    }
+
+    // If only a new line character is in input, continue to next loop
+    if (strcmp(input, "\n") == 0) {
+        return 1;
+    }
+
+    // Trim input
+    trim(input);
+
+    // Remove newline from input
+    input[strcspn(input, "\n")] = 0;
+
+    // Check if exit was entered
+    if (strcmp(input, "exit") == 0) {
+        return 2;
+    }
+
+    // Input is good, continue processing
     return 0;
 }
 
 void trim(char *s) {
+    // Remove *leading* whitespace from string
+    // Two pointers initially at the beginning
+    int i = 0, j = 0;
 
-    // Pointer to the beginning of the trimmed string
-    char *ptr = s;
+    // Skip leading spaces, i now points to first non whitespace character
+    while (s[i] == ' ') i++; 
 
-    // Skip leading spaces
-    while (*s == ' ') s++;
-
-    // Shift remaining characters to the beginning
-    while ((*ptr++ = *s++));
+    // Shift the characters of string to remove leading spaces
+    while ((s[j++] = s[i++]));
 }
 
 int checkAlias(char* input, List aliases_used) {
-    // Check alias
-    for (int i = 0; i < MAX_ALIASES; i++) {
-        if (aliases[i] != NULL) {
-            int aliasLen = strlen(aliases[i]->name);
-
-            // Check if input starts with alias name
-            if (strncmp(input, aliases[i]->name, aliasLen) == 0) {
-
-                // Check alias name is full token and not just start of one
-                if (input[aliasLen] == ' ' || input[aliasLen] == '\0') {
-
-                    // Check for circular alias
-                    if (contains(aliases_used, aliases[i]->name) == 1) {
-                        printf("Circular alias detected with alias \"%s\": aborted\n", aliases[i]->name);
-                        return 1; // Error
-                    }
-
-                    // Add current alias to aliases_used list
-                    push(aliases_used, aliases[i]->name);
-
-                    char newInput[MAX_INPUT];
-                    strcpy(newInput, aliases[i]->command);
-                    strcat(newInput, input + aliasLen);
-                    strcpy(input, newInput);
-                    break;
-                }
-            }
-        }
-    }
-
-    return 0;
+	// Check input and replace aliases with their command
+	for (int i = 0; i < MAX_ALIASES; i++) {
+		// Ensure that alias at position i is not NULL
+		if (aliases[i] == NULL) {
+			continue;
+		}
+		
+		// Save length of current alias name
+		int aliasLen = strlen(aliases[i]->name);
+		
+		// Ensure input starts with alias namespace
+		if (strncmp(input, aliases[i]->name, aliasLen) != 0) {
+			continue;
+		}
+		
+		// Ensure that the alias name is a full token, and not just the start of one
+		if (input[aliasLen] != ' ' && input[aliasLen] != '\0') {
+			continue;
+		}
+		
+		// Check if a circular alias has been encountered
+		if (contains(aliases_used, aliases[i]->name) == 1) {
+			printf("Circular alias detected with alias \"%s\": aborted\n", aliases[i]->name);
+			return 1;
+		}
+		
+		// Add current alias to the aliases_used list
+		push(aliases_used, aliases[i]->name);
+		
+		// Replace alias name with command
+		char newInput[MAX_INPUT];
+		strcpy(newInput, aliases[i]->command);
+		strcat(newInput, input + aliasLen);
+		strcpy(input, newInput);
+		break;
+	}
+	
+	// Aliases successfully replaced
+	return 0;
 }
+
+
+
+/* NOT TIDIED YET */
 
 void processInput(char* input, int* count) {
     // Create alias list
