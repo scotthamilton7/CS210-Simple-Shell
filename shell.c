@@ -27,14 +27,14 @@ int main(void) {
         printf("$ ");
 
         // Validate user input
-        int validation = inputValidation(input);
+        int valid = getInput(input);
 
         // Check if program loop needs to continue
-        if (validation == 1) {
+        if (valid == 1) {
             continue;
         }
         // Check if program loop needs to exit
-        else if (validation == 2) {
+        else if (valid == 2) {
             printf("\n");
             exit = 1;
             break;
@@ -92,7 +92,7 @@ void exitTasks(char* originalPath, int historyCount) {
     getpath(NULL);
 }
 
-int inputValidation(char* input) {
+int getInput(char* input) {
     // Return 0 if input is valid and processing can continue
     // Return 1 to do nothing and continue loop
     // Return 2 if user wants to exit shell
@@ -135,45 +135,45 @@ void trim(char *s) {
 }
 
 int checkAlias(char* input, List aliases_used) {
-	// Check input and replace aliases with their command
-	for (int i = 0; i < MAX_ALIASES; i++) {
-		// Ensure that alias at position i is not NULL
-		if (aliases[i] == NULL) {
-			continue;
-		}
+    // Check input and replace aliases with their command
+    for (int i = 0; i < MAX_ALIASES; i++) {
+        // Ensure that alias at position i is not NULL
+        if (aliases[i] == NULL) {
+            continue;
+        }
 		
-		// Save length of current alias name
-		int aliasLen = strlen(aliases[i]->name);
+        // Save length of current alias name
+        int aliasLen = strlen(aliases[i]->name);
 		
-		// Ensure input starts with alias namespace
-		if (strncmp(input, aliases[i]->name, aliasLen) != 0) {
-			continue;
-		}
+        // Ensure input starts with alias namespace
+        if (strncmp(input, aliases[i]->name, aliasLen) != 0) {
+            continue;
+        }
 		
-		// Ensure that the alias name is a full token, and not just the start of one
-		if (input[aliasLen] != ' ' && input[aliasLen] != '\0') {
-			continue;
-		}
+        // Ensure that the alias name is a full token, and not just the start of one
+        if (input[aliasLen] != ' ' && input[aliasLen] != '\0') {
+            continue;
+        }
 		
-		// Check if a circular alias has been encountered
-		if (contains(aliases_used, aliases[i]->name) == 1) {
-			printf("Circular alias detected with alias \"%s\": aborted\n", aliases[i]->name);
-			return 1;
-		}
+        // Check if a circular alias has been encountered
+        if (contains(aliases_used, aliases[i]->name) == 1) {
+            printf("Circular alias detected with alias \"%s\": aborted\n", aliases[i]->name);
+            return 1;
+        }
 		
-		// Add current alias to the aliases_used list
-		push(aliases_used, aliases[i]->name);
+        // Add current alias to the aliases_used list
+        push(aliases_used, aliases[i]->name);
 		
-		// Replace alias name with command
-		char newInput[MAX_INPUT];
-		strcpy(newInput, aliases[i]->command);
-		strcat(newInput, input + aliasLen);
-		strcpy(input, newInput);
-		break;
-	}
+        // Replace alias name with command
+        char newInput[MAX_INPUT];
+        strcpy(newInput, aliases[i]->command);
+        strcat(newInput, input + aliasLen);
+        strcpy(input, newInput);
+        break;
+    }
 	
-	// Aliases successfully replaced
-	return 0;
+    // Aliases successfully replaced
+    0;
 }
 
 

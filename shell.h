@@ -14,7 +14,7 @@ typedef struct {
 // Helpers
 void startTasks(char** originalPath, int* historyCount);
 void exitTasks(char* originalPath, int historyCount);
-int inputValidation(char* input);
+int  getInput(char* input);
 void trim(char *s);
 void processInput(char* input, int* historyCount);
 void externalCommand(char** tokens);
