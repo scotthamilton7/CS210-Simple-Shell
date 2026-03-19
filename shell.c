@@ -173,7 +173,7 @@ int checkAlias(char* input, List aliases_used) {
     }
 	
     // Aliases successfully replaced
-    0;
+    return 0;
 }
 
 
