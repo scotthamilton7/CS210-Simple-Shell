@@ -66,18 +66,18 @@ void startTasks(char** originalPath, int* historyCount) {
 }
 
 void exitTasks(char* originalPath, int historyCount) {
-    // Save history and aliases to persistant file
+    // Save history and aliases to persistent file
     saveHistory(historyCount);
     saveAliases();
 
-    // Clear history memeory allocations
+    // Clear history memory allocations
     for (int i = 0; i < MAX_HISTORY; i++) {
         if (history[i] != NULL) {
             free(history[i]);
         }
     }
 
-    // Cleae alias memory allocations
+    // Clear alias memory allocations
     for (int i = 0; i < MAX_ALIASES; i++) {
         if (aliases[i] != NULL) {
             free(aliases[i]->name);
@@ -183,10 +183,6 @@ int replaceAliases(List aliases_used, char** input) {
     return 0;
 }
 
-
-
-/* NOT TIDIED YET */
-
 void processInput(char* input, int* count) {
     // Create alias list
     List aliases_used = new_list();
@@ -221,7 +217,7 @@ void processInput(char* input, int* count) {
         history[pos] = strdup(input);
         *count = (pos + 1) % MAX_HISTORY;
 
-        //
+        // Check command
         if (strcmp(tokens[0], "getpath") == 0) {
             getpath(tokens);
         }
@@ -257,7 +253,7 @@ void processInput(char* input, int* count) {
 void getpath(char** tokens) {
     // Check if any parameters were passed in
     if (tokens != NULL && tokens[1] != NULL) {
-        printf("Error: Too many arugments. getpath takes no parameters\n");
+        printf("Error: Too many arguments. getpath takes no parameters\n");
         return;
     }
 
@@ -288,6 +284,7 @@ void changeDirectory(char** tokens){
         return;
     }
 
+    // If one parameter given, change to that directory
     if(tokens[1] != NULL){
         if (chdir(tokens[1]) != 0) {
             // Error changing directories
@@ -296,6 +293,7 @@ void changeDirectory(char** tokens){
             perror(errMsg);
         }
     }
+    // No parameters, change to home folder
     else{
         printf("Changing to %s\n", getenv("HOME"));
         chdir(getenv("HOME"));
@@ -427,11 +425,10 @@ void loadHistory( int* count) {
 
     // Check if file opened correctly
     if (!fp) {
-        printf("Could not find persistant history\n");
+        printf("Could not find persistent history\n");
         return;
     }
 
-    //
     char buffer[MAX_INPUT];
 
     // Load history from file
@@ -452,6 +449,7 @@ void loadHistory( int* count) {
 }
 
 void addAlias(char** tokens) {
+    // Check that the correct number of parameters have been passed
     if (tokens[2] == NULL) {
         printf("Error: correct usage is\nalias <name> <command>\n");
         return;
@@ -553,6 +551,7 @@ void saveAliases() {
     char file[MAX_INPUT];
     strcat(strcpy(file, getenv("HOME")), "/.aliases");
 
+    // Try to open aliases file
     FILE *fp = fopen(file, "w");
 
     // Check if file opened correctly
@@ -560,15 +559,20 @@ void saveAliases() {
         printf("Failed to save aliases!\n");
         return;
     }
+
+    // Write saved aliases to file
     for (int i = 0; i < MAX_ALIASES; i++) {
         if (aliases[i] != NULL) {
             fprintf(fp, "%s ", aliases[i]->name);
             fprintf(fp, "%s\n", aliases[i]->command);
 
         }
-        else{break;}
+        else{
+            break;
+        }
     }
 
+    // Close aliases file
     fclose(fp);
 }
 
@@ -576,6 +580,7 @@ void loadAliases() {
     char file[MAX_INPUT];
     strcat(strcpy(file, getenv("HOME")), "/.aliases");
 
+    // Try to open aliases file
     FILE *fp = fopen(file, "r");
     if (!fp) {
         printf("Could not find persistent aliases\n");
@@ -584,6 +589,7 @@ void loadAliases() {
 
     char buffer[MAX_INPUT];
 
+    // Create alias for each entry in file
     while (fgets(buffer, sizeof(buffer), fp)) {
         buffer[strcspn(buffer, "\n")] = 0;
 
@@ -605,5 +611,6 @@ void loadAliases() {
         addAlias(tokens);
     }
 
+    // Close aliases file
     fclose(fp);
 }
