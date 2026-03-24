@@ -16,6 +16,7 @@ void startTasks(char** originalPath, int* historyCount);
 void exitTasks(char* originalPath, int historyCount);
 int  getInput(char* input);
 void trim(char *s);
+int  replaceAliases(List aliases_used, char** input);
 void processInput(char* input, int* historyCount);
 void externalCommand(char** tokens);
 

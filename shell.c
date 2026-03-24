@@ -134,46 +134,53 @@ void trim(char *s) {
     while ((s[j++] = s[i++]));
 }
 
-int checkAlias(char* input, List aliases_used) {
-    // Check input and replace aliases with their command
+char* getAliasCommand(char* token) {
+    //If token is alias name then return alias command, else return NULL
     for (int i = 0; i < MAX_ALIASES; i++) {
-        // Ensure that alias at position i is not NULL
-        if (aliases[i] == NULL) {
-            continue;
+        if (aliases[i] != NULL && strcmp(token, aliases[i]->name) == 0) {
+            return aliases[i]->command;
         }
-		
-        // Save length of current alias name
-        int aliasLen = strlen(aliases[i]->name);
-		
-        // Ensure input starts with alias namespace
-        if (strncmp(input, aliases[i]->name, aliasLen) != 0) {
-            continue;
-        }
-		
-        // Ensure that the alias name is a full token, and not just the start of one
-        if (input[aliasLen] != ' ' && input[aliasLen] != '\0') {
-            continue;
-        }
-		
-        // Check if a circular alias has been encountered
-        if (contains(aliases_used, aliases[i]->name) == 1) {
-            printf("Circular alias detected with alias \"%s\": aborted\n", aliases[i]->name);
-            return 1;
-        }
-		
-        // Add current alias to the aliases_used list
-        push(aliases_used, aliases[i]->name);
-		
-        // Replace alias name with command
-        char newInput[MAX_INPUT];
-        strcpy(newInput, aliases[i]->command);
-        strcat(newInput, input + aliasLen);
-        strcpy(input, newInput);
-        break;
     }
-	
-    // Aliases successfully replaced
-    0;
+    // Token is not an alias
+    return NULL;
+}
+
+int replaceAliases(List aliases_used, char** input) {
+    char expandedInput[MAX_INPUT] = "";
+    char tempInput[MAX_INPUT];
+    strcpy(tempInput, *input);
+
+    char* tok = strtok(tempInput, " \t");
+    while (tok != NULL) {
+        char* expansion = getAliasCommand(tok);
+
+        if (expansion != NULL) {
+            // Alias has been used
+            if (contains(aliases_used, tok)) {
+                printf("Circular alias detected with alias \"%s\": aborted\n", tok);
+                clear(aliases_used);
+                free(aliases_used);
+                return 1;
+            }
+            push(aliases_used, tok);
+
+            strcat(expandedInput, expansion);
+        }
+        else {
+            // No alias, keep original token
+            strcat(expandedInput, tok);
+        }
+
+        // Add whitespace between tokens
+        strcat(expandedInput, " ");
+        tok = strtok(NULL, " \t");
+    }
+
+    // Copy expanded input back into input
+    trim(expandedInput);
+    strcpy(*input, expandedInput);
+
+    return 0;
 }
 
 
@@ -184,15 +191,13 @@ void processInput(char* input, int* count) {
     // Create alias list
     List aliases_used = new_list();
 
-    // Check if input is alias
-    //checkAlias(input);
-    char prev[MAX_INPUT];
-    do {
-        strcpy(prev, input);
-        if (checkAlias(input, aliases_used) == 1) {
+    // If not creating or deleting an alias, replace tokens with their command
+    if (strncmp(input, "alias", strlen("alias")) != 0 && strncmp(input, "unalias", strlen("unalias")) != 0) {
+        if (replaceAliases(aliases_used, &input) == 1) {
+            // Circular alias detected
             return;
         }
-    } while (strcmp(prev, input) != 0);
+    }
 
     // Split input string into tokens
     int i = 0;
