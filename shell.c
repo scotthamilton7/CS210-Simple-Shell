@@ -186,13 +186,21 @@ int replaceAliases(List aliases_used, char** input) {
 void processInput(char* input, int* count) {
     // Create alias list
     List aliases_used = new_list();
+    char prev_input[MAX_INPUT];
+
+    // Save input for history
+    char originalInput[MAX_INPUT];
+    strcpy(originalInput, input);
 
     // If not creating or deleting an alias, replace tokens with their command
     if (strncmp(input, "alias", strlen("alias")) != 0 && strncmp(input, "unalias", strlen("unalias")) != 0) {
-        if (replaceAliases(aliases_used, &input) == 1) {
-            // Circular alias detected
-            return;
-        }
+        do {
+            strcpy(prev_input, input);
+            if (replaceAliases(aliases_used, &input) == 1) {
+                // Circular alias detected
+                return;
+            }
+        } while (strcmp(input, prev_input) != 0);
     }
 
     // Split input string into tokens
@@ -214,7 +222,7 @@ void processInput(char* input, int* count) {
         if (history[pos] != NULL) {
             free(history[pos]);
         }
-        history[pos] = strdup(input);
+        history[pos] = strdup(originalInput);
         *count = (pos + 1) % MAX_HISTORY;
 
         // Check command
@@ -228,7 +236,7 @@ void processInput(char* input, int* count) {
             changeDirectory(tokens);
         }
         else if (strcmp(tokens[0], "history") == 0) {
-            printHistory(*count);
+            printHistory(tokens, *count);
         }
         else if (strcmp(tokens[0], "alias") == 0) {
             if (tokens[1] != NULL) {
@@ -265,11 +273,11 @@ void getpath(char** tokens) {
 void setpath(char** tokens) {
     // Check if any parameters were passed in
     if (tokens[2] != NULL) {
-        printf("Error: Too many arguments. setpath takes exactly 1 parameter\n");
+        printf("Error: Too many arguments. Correct usage is:\nsetpath <path>\n");
         return;
     }
     else if (tokens[1] == NULL) {
-        printf("Error: Not enough arguments. setpath requires 1 parameter (the path)\n");
+        printf("Error: Not enough arguments. Correct usage is:\nsetpath <path>\n");
         return;
     }
 
@@ -280,7 +288,7 @@ void setpath(char** tokens) {
 void changeDirectory(char** tokens){
     // Check if too many parameters have been passed
     if (tokens[2] != NULL) {
-        printf("Error: Too many arguments. cd takes either 0 or 1 parameters\n");
+        printf("Error: Too many arguments. Correct usage is:\ncd <directory>\tTo change to <directory>\ncd\t\tTo change to home directory\n");
         return;
     }
 
@@ -325,7 +333,13 @@ void externalCommand(char** tokens) {
 
 }
 
-void printHistory(int count) {
+void printHistory(char** tokens, int count) {
+    // Check if parameters have been passed in
+    if (tokens[1] != NULL) {
+        printf("Error: history takes no parameters\n");
+        return;
+    }
+
     // Print all items in the history array
     int num = 1;
     for (int i = 0; i < MAX_HISTORY; i++) {
@@ -367,6 +381,10 @@ void invokeHistory(char** tokens, int* count) {
     // Get index for specific command number
     else {
         int n = atoi(tokens[0] + 1);
+        if (n < 1 || n > 20) {
+            printf("History reference invalid or out of bounds.\n");
+            return;
+        }
         int firstCmd = (pos - historyCount + MAX_HISTORY) % MAX_HISTORY;
         index = (firstCmd + (n - 1)) % MAX_HISTORY;
     }

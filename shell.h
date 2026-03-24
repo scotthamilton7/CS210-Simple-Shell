@@ -26,7 +26,7 @@ void setpath(char** tokens);
 void changeDirectory(char** tokens);
 
 // History
-void printHistory(int historyCount);
+void printHistory(char** tokens, int historyCount);
 void invokeHistory(char** tokens, int* historyCount);
 void saveHistory(int historyCount);
 void loadHistory(int* historyCount);
