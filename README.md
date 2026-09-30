@@ -1,4 +1,4 @@
-**Important:** This project was worked on equally by myself, Adam Morrell, Jack Hardy, Jude Graham, and Ethan McGee. Due to technical issues accessing the university GitLab accounts, the commit history does not accurately reflect this.
+**Contribution Note:** This project was developed collaboratively and equally by myself and Adam Morrell, Jack Hardy, Jude Graham, and Ethan McGee. Due to technical issues with access to the university's GitLab accounts during development, the Git commit history does not accurately represent each contributor's individual contributions. The commit history should therefore not be used as an indication of the relative contributions of team members.
 
 # Simple Shell Project
 
